@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function signedIn() { 
+      return request.auth != null; 
+    }
+    
+    // Lấy role từ employees collection (dùng uid làm document ID)
+    function getUserRole() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() { 
+      return signedIn() && getUserRole() == "ADMIN"; 
+    }
+    
+    function isManager() { 
+      return signedIn() && (getUserRole() == "MANAGER" || getUserRole() == "ADMIN"); 
+    }
+
+    match /settings/{doc} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /employees/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /vehicles/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /worklogs/{date} {
+      allow read: if signedIn();
+      allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+
+      match /runs/{runId} {
+        allow read: if signedIn();
+        allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+      }
+    }
+
+    match /advances/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+    }
+  }
+}

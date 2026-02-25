@@ -1,0 +1,23 @@
+mutation CreateNewUser($email: String!, $username: String!) @auth(level: USER) {
+  user_insert(data: {email: $email, username: $username})
+}
+
+query GetPostsByUser($userId: UUID!) @auth(level: USER) {
+  posts(where: {userId: {eq: $userId}}) {
+    id
+    title
+    content
+  }
+}
+
+mutation UpdatePostContent($id: UUID!, $content: String!) @auth(level: USER) {
+  post_update(key: {id: $id}, data: {content: $content})
+}
+
+query ListAllUsers @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  users {
+    id
+    username
+    email
+  }
+}

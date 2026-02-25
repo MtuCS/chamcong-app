@@ -1,0 +1,28 @@
+mutation CreateSeedData @auth(level: PUBLIC, insecureReason: "This mutation is used for seeding data and does not require authentication.") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      username: "demouser1",
+      email: "demouser1@example.com"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      username: "demouser2",
+      email: "demouser2@example.com"
+    }
+  ])
+  post_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440002",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Example post from demouser1",
+      content: "This is an example post from demouser1"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440003",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      title: "Example post from demouser2",
+      content: "This is an example post from demouser2"
+    }
+  ])
+}

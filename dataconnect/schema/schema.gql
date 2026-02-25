@@ -1,0 +1,10 @@
+type User @table {
+  username: String!
+  email: String!
+}
+
+type Post @table {
+  title: String!
+  content: String!
+  user: User
+}
