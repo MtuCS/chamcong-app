@@ -81,7 +81,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Truck className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight text-center">TRANG HÒA LIMOUSINE</h1>
-          <p className="text-slate-500 text-sm mt-1">Hệ thống quản lý hàng hóa bảo mật</p>
+          <p className="text-slate-500 text-sm mt-1">Hệ thống quản lý - điều phối chuyến</p>
         </div>
 
         {error && (
