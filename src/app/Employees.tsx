@@ -30,6 +30,8 @@ export const Employees: React.FC = () => {
   const [formData, setFormData] = useState<EmployeeFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active');
+  const [confirmingEmployee, setConfirmingEmployee] = useState<Employee | null>(null);
+  const [confirming, setConfirming] = useState(false);
   
   const { showSuccess, showError } = useToast();
 
@@ -128,6 +130,31 @@ export const Employees: React.FC = () => {
       console.error('Error toggling employee:', err);
       showError('Không thể cập nhật trạng thái');
     }
+  };
+
+  // Prepare confirmation modal for disabling employees
+  const handleRequestDisable = (emp: Employee) => {
+    if (!emp.active) {
+      handleToggleActive(emp);
+      return;
+    }
+    setConfirmingEmployee(emp);
+  };
+
+  const handleConfirmDisable = async () => {
+    if (!confirmingEmployee) return;
+    setConfirming(true);
+    try {
+      await handleToggleActive(confirmingEmployee);
+    } finally {
+      setConfirming(false);
+      setConfirmingEmployee(null);
+    }
+  };
+
+  const handleCancelDisable = () => {
+    if (confirming) return;
+    setConfirmingEmployee(null);
   };
 
   // Role config for badges and avatars
@@ -285,7 +312,7 @@ export const Employees: React.FC = () => {
                         <span className="material-symbols-outlined text-sm">edit</span>
                       </button>
                       <button
-                        onClick={() => handleToggleActive(emp)}
+                        onClick={() => (emp.active ? handleRequestDisable(emp) : handleToggleActive(emp))}
                         className={`p-2 rounded-lg transition-colors ${
                           emp.active 
                             ? 'hover:bg-red-50 text-slate-400 hover:text-red-500' 
@@ -411,6 +438,51 @@ export const Employees: React.FC = () => {
                   <>
                     <span className="material-symbols-outlined text-sm">save</span>
                     {editingId ? 'Cập nhật' : 'Thêm mới'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Disable Modal */}
+      {confirmingEmployee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 animate-in zoom-in-95">
+            <div className="p-6 border-b border-slate-100">
+              <h3 className="text-xl font-black text-slate-800">Vô hiệu hóa nhân viên</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Bạn muốn vô hiệu hóa nhân viên <span className="font-semibold text-slate-800">{confirmingEmployee.name}</span>?
+              </p>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-slate-500">
+                Nhân viên sẽ không còn xuất hiện trong danh sách "Đang làm" nhưng vẫn có thể kích hoạt lại sau này.
+              </p>
+            </div>
+            <div className="p-6 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={handleCancelDisable}
+                disabled={confirming}
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmDisable}
+                disabled={confirming}
+                className="flex-1 px-4 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {confirming ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    Đang vô hiệu...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">person_off</span>
+                    Đồng ý
                   </>
                 )}
               </button>
