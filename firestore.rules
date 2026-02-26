@@ -1,52 +1,67 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function signedIn() { 
-      return request.auth != null; 
+
+    // Kiểm tra đã đăng nhập
+    function signedIn() {
+      return request.auth != null;
     }
-    
-    // Lấy role từ employees collection (dùng uid làm document ID)
+
+    // Lấy document nhân viên (trả về null nếu không tồn tại)
+    function employeeDoc() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid));
+    }
+
+    // Chỉ cho phép tài khoản đang active trong hệ thống
+    // Chặn: tài khoản Firebase còn token nhưng đã bị vô hiệu hóa (active=false)
+    // Chặn: tài khoản Firebase chưa có profile trong Firestore
+    function isActiveUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && employeeDoc().data.active == true;
+    }
+
+    // Lấy role (an toàn — chỉ gọi sau khi isActiveUser() đã pass)
     function getUserRole() {
-      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role;
+      return employeeDoc().data.role;
     }
-    
-    function isAdmin() { 
-      return signedIn() && getUserRole() == "ADMIN"; 
+
+    function isAdmin() {
+      return isActiveUser() && getUserRole() == "ADMIN";
     }
-    
-    function isManager() { 
-      return signedIn() && (getUserRole() == "MANAGER" || getUserRole() == "ADMIN"); 
+
+    function isManager() {
+      return isActiveUser() && (getUserRole() == "MANAGER" || getUserRole() == "ADMIN");
     }
 
     match /settings/{doc} {
-      allow read: if signedIn();
+      allow read: if isActiveUser();
       allow write: if isAdmin();
     }
 
     match /employees/{id} {
-      allow read: if signedIn();
+      allow read: if isActiveUser();
       allow write: if isAdmin();
     }
 
     match /vehicles/{id} {
-      allow read: if signedIn();
+      allow read: if isActiveUser();
       allow write: if isAdmin();
     }
 
     match /worklogs/{date} {
-      allow read: if signedIn();
-      allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+      allow read: if isActiveUser();
+      allow write: if isManager();
 
       match /runs/{runId} {
-        allow read: if signedIn();
-        allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+        allow read: if isActiveUser();
+        allow write: if isManager();
       }
     }
 
     match /advances/{id} {
-      allow read: if signedIn();
-      allow write: if signedIn(); // Tạm cho phép tất cả user đã đăng nhập
+      allow read: if isActiveUser();
+      allow write: if isManager();
     }
   }
 }

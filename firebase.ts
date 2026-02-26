@@ -1,19 +1,18 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase config đọc từ biến môi trường (.env.local)
+// Không commit .env.local lên git
 const firebaseConfig = {
-  apiKey: "AIzaSyBJz9xjp0l9CuKzWu_d5c5GeW7wvSb6bLw",
-  authDomain: "quanlychamcong-65794.firebaseapp.com",
-  projectId: "quanlychamcong-65794",
-  storageBucket: "quanlychamcong-65794.firebasestorage.app",
-  messagingSenderId: "2581573153",
-  appId: "1:2581573153:web:f7f72daf521fa0652e3d60",
-  measurementId: "G-4JD5N905H3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
