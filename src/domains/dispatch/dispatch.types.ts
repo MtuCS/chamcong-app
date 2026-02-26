@@ -108,6 +108,7 @@ export enum ConflictType {
   EMPLOYEE_SAME_SHIFT = 'EMPLOYEE_SAME_SHIFT', // Same person on 2 vehicles same shift (TC05)
   EMPLOYEE_MAX_SHIFTS = 'EMPLOYEE_MAX_SHIFTS', // Person exceeds max shifts/day (TC06)
   MISSING_DRIVER = 'MISSING_DRIVER',           // Vehicle assigned but no driver
+  INVALID_INPUT = 'INVALID_INPUT',             // Suspicious characters / injection attempt
 }
 
 /**

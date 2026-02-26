@@ -235,6 +235,16 @@ describe('validateDailyRuns - Comprehensive', () => {
     expect(result.canLock).toBe(false);
     expect(result.conflicts.some(c => c.type === ConflictType.MISSING_DRIVER)).toBe(true);
   });
+
+  it('should block lock for dangerous characters (OWASP A03)', () => {
+    const runs = toRunEditVM([
+      { id: 'r_attack', direction: Direction.DL_SG, shift: 1, vehiclePlate: '<script>alert(1)</script>', driverId: 'emp_A', assistantId: 'emp_B', trips: 1 },
+    ]);
+    const result = validateDailyRuns(runs);
+
+    expect(result.canLock).toBe(false);
+    expect(result.conflicts.some(c => c.type === ConflictType.INVALID_INPUT)).toBe(true);
+  });
 });
 
 // ============ HELPER FUNCTIONS ============

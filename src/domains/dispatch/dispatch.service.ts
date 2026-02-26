@@ -30,7 +30,9 @@ import {
   buildEmployeeMap,
   buildVehicleMap,
   getEmployeeName,
+  mapRunToEditVM,
 } from './dispatch.mapper';
+import { validateDailyRuns } from './dispatch.validation';
 import { calcTours, calcRunAmount, formatVND } from '../payroll/payroll.utils';
 
 // ============ DASHBOARD ============
@@ -140,7 +142,51 @@ export async function removeRun(dateKey: string, runId: string): Promise<void> {
  * Lock/Finalize a worklog
  */
 export async function lockDailyLog(dateKey: string): Promise<void> {
-  return firestore.updateWorklogStatus(dateKey, WorklogStatus.FINAL);
+  const [worklog, employees, vehicles, rates] = await Promise.all([
+    firestore.getWorklogByDate(dateKey),
+    firestore.getActiveEmployees(),
+    firestore.getAllVehicles(),
+    firestore.getPayRates(),
+  ]);
+
+  if (!worklog) {
+    const error = new Error('Cannot lock daily log: worklog not found');
+    (error as { code?: string }).code = 'DISPATCH_WORKLOG_MISSING';
+    throw error;
+  }
+
+  const runs = worklog.runs || [];
+  const employeeMap = buildEmployeeMap(employees);
+  const vehicleMap = buildVehicleMap(vehicles);
+  const runVMs = runs.map(run => mapRunToEditVM(run, employeeMap, vehicleMap, rates));
+  const maxShifts = rates.maxShiftsPerDay ?? 2;
+  const validation = validateDailyRuns(runVMs, maxShifts);
+
+  if (!validation.canLock) {
+    const reason = validation.conflicts[0]?.message || 'run data invalid';
+    const error = new Error(`Cannot lock daily log: ${reason}`);
+    (error as { code?: string }).code = 'DISPATCH_VALIDATION_ERROR';
+    throw error;
+  }
+
+  const inactiveAssignments = new Map<string, string>();
+  runVMs.forEach(vm => {
+    if (vm.driverId && !employeeMap.has(vm.driverId)) {
+      inactiveAssignments.set(vm.driverId, vm.driverName || vm.driverId);
+    }
+    if (vm.assistantId && !employeeMap.has(vm.assistantId)) {
+      inactiveAssignments.set(vm.assistantId, vm.assistantName || vm.assistantId);
+    }
+  });
+
+  if (inactiveAssignments.size > 0) {
+    const list = Array.from(inactiveAssignments.values()).join(', ');
+    const error = new Error(`Cannot lock daily log: inactive employees detected (${list})`);
+    (error as { code?: string }).code = 'DISPATCH_INACTIVE_EMPLOYEE';
+    throw error;
+  }
+
+  await firestore.updateWorklogStatus(dateKey, WorklogStatus.FINAL);
 }
 
 /**

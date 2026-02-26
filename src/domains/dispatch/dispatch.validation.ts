@@ -16,6 +16,13 @@ import {
 } from './dispatch.types';
 import { DIRECTION_LABELS } from './dispatch.mapper';
 
+const DANGEROUS_INPUT_PATTERN = /<|>|javascript:|onerror|onload|script/i;
+
+function containsDangerousInput(value?: string | null): boolean {
+  if (!value) return false;
+  return DANGEROUS_INPUT_PATTERN.test(value);
+}
+
 // ============ AVAILABILITY HELPERS ============
 
 /**
@@ -244,6 +251,33 @@ export function checkMissingDriverConflict(
   return conflicts;
 }
 
+/**
+ * Detect suspicious input that could lead to injection/XSS when rendered in UI
+ */
+export function checkDangerousInputConflict(
+  allRuns: RunEditVM[]
+): ValidationConflict[] {
+  const conflicts: ValidationConflict[] = [];
+
+  allRuns.forEach(run => {
+    const unsafeFields: string[] = [];
+    if (containsDangerousInput(run.vehiclePlate)) unsafeFields.push('bien so xe');
+    if (containsDangerousInput(run.driverName)) unsafeFields.push('ten tai xe');
+    if (containsDangerousInput(run.assistantName)) unsafeFields.push('ten phu xe');
+
+    if (unsafeFields.length > 0) {
+      const fieldList = unsafeFields.join(', ');
+      conflicts.push({
+        type: ConflictType.INVALID_INPUT,
+        runId: run.id,
+        message: `Phat hien ky tu nguy hiem trong ${fieldList} (run ${run.vehiclePlate || run.id})`,
+      });
+    }
+  });
+
+  return conflicts;
+}
+
 // ============ AGGREGATE VALIDATION ============
 
 /**
@@ -261,12 +295,14 @@ export function validateDailyRuns(
   conflicts.push(...checkEmployeeSameShiftConflict(allRuns, maxShiftsPerDay));
   conflicts.push(...checkEmployeeMaxShiftsConflict(allRuns, maxShiftsPerDay));
   conflicts.push(...checkMissingDriverConflict(allRuns));
+  conflicts.push(...checkDangerousInputConflict(allRuns));
   
   // Blocking errors = duplicate slot, same shift conflict, max shifts
   const blockingTypes = [
     ConflictType.DUPLICATE_SLOT,
     ConflictType.EMPLOYEE_SAME_SHIFT,
     ConflictType.EMPLOYEE_MAX_SHIFTS,
+    ConflictType.INVALID_INPUT,
   ];
   
   const hasBlockingError = conflicts.some(c => blockingTypes.includes(c.type));

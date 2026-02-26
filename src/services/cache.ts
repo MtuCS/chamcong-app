@@ -33,7 +33,33 @@ const cache: CacheState = {
 };
 
 // Cache TTL in milliseconds (5 minutes)
-const CACHE_TTL = 5 * 60 * 1000;
+export const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const TAG_PATTERN = /<[^>]*>/g;
+const JS_SCHEME_PATTERN = /javascript:/gi;
+
+function sanitizeText(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(TAG_PATTERN, '')
+    .replace(JS_SCHEME_PATTERN, '')
+    .trim();
+}
+
+function sanitizeEmployee(employee: Employee): Employee {
+  return {
+    ...employee,
+    name: sanitizeText(employee.name),
+  };
+}
+
+function sanitizeVehicle(vehicle: Vehicle): Vehicle {
+  return {
+    ...vehicle,
+    code: sanitizeText(vehicle.code),
+    plateNumber: sanitizeText(vehicle.plateNumber),
+  };
+}
 
 // Listeners for cache updates
 type CacheListener = () => void;
@@ -51,14 +77,20 @@ export function subscribeCacheUpdate(listener: CacheListener): () => void {
  * Notify all listeners of cache update
  */
 function notifyListeners(): void {
-  listeners.forEach(fn => fn());
+  listeners.forEach(fn => {
+    try {
+      fn();
+    } catch (err) {
+      console.error('Cache listener error', err);
+    }
+  });
 }
 
 /**
  * Check if cache is stale
  */
 function isStale(key: keyof typeof cache.lastFetch): boolean {
-  return Date.now() - cache.lastFetch[key] > CACHE_TTL;
+  return Date.now() - cache.lastFetch[key] > CACHE_TTL_MS;
 }
 
 // ============ EMPLOYEES ============
@@ -75,11 +107,11 @@ export async function getEmployees(forceRefresh = false): Promise<Employee[]> {
     firestore.getActiveEmployees()
   );
   
-  cache.employees = employees;
+  cache.employees = employees.map(sanitizeEmployee);
   cache.lastFetch.employees = Date.now();
   notifyListeners();
   
-  return employees;
+  return cache.employees;
 }
 
 /**
@@ -102,7 +134,7 @@ export function getEmployeeName(id: string | null): string {
  */
 export function addEmployeeToCache(employee: Employee): void {
   if (cache.employees) {
-    cache.employees.push(employee);
+    cache.employees.push(sanitizeEmployee(employee));
     notifyListeners();
   }
 }
@@ -114,7 +146,10 @@ export function updateEmployeeInCache(id: string, updates: Partial<Employee>): v
   if (cache.employees) {
     const idx = cache.employees.findIndex(e => e.id === id);
     if (idx >= 0) {
-      cache.employees[idx] = { ...cache.employees[idx], ...updates };
+      cache.employees[idx] = sanitizeEmployee({
+        ...cache.employees[idx],
+        ...updates,
+      } as Employee);
       notifyListeners();
     }
   }
@@ -134,11 +169,11 @@ export async function getVehicles(forceRefresh = false): Promise<Vehicle[]> {
     firestore.getAllVehicles()
   );
   
-  cache.vehicles = vehicles;
+  cache.vehicles = vehicles.map(sanitizeVehicle);
   cache.lastFetch.vehicles = Date.now();
   notifyListeners();
   
-  return vehicles;
+  return cache.vehicles;
 }
 
 /**
@@ -165,7 +200,7 @@ export async function getPayRates(forceRefresh = false): Promise<PayRates> {
   cache.payRates = rates;
   cache.lastFetch.payRates = Date.now();
   
-  return rates;
+  return cache.payRates;
 }
 
 // ============ PRELOAD ============
